@@ -5,12 +5,16 @@ global with sharing class CustomObjectJsonBuilder extends pandadoc.JsonBuilder {
 
     static {
         //sObjectName used in lowercase
-        String sObjectName = 'Custom_Object_Child__c'.toLowerCase();
+        String itemSObjectName = 'Custom_Object_Child__c'.toLowerCase();
+        pandadoc.Item.ItemSettings itemSetting = pandadoc.Item.PRICING_ITEM_SETTINGS_MAP.get(itemSObjectName);
 
-        pandadoc.Item.ItemSettings setting = pandadoc.Item.PRICING_ITEM_SETTINGS_MAP.get(sObjectName);
+        String recipientSObjectName = 'Contact'.toLowerCase();
+        pandadoc.Recipient.RecipientSettings recipientSettings = pandadoc.Recipient.RECIPIENT_SETTINGS_MAP.get(recipientSObjectName);
+
         //Here we should use Map where key is a SOQL relationship name and value is a Set of fields for select
         RELATED_OBJECTS = new Map<String, Set<String>> {
-            'Custom_Object_Childs__r' => setting.getSoqlFields()
+            'Custom_Object_Childs__r' => itemSetting.getSoqlFields(),
+            'Contacts__r' => recipientSettings.getSoqlFields()
         };
     }
     // Constructor without parameters is required
@@ -32,22 +36,8 @@ global with sharing class CustomObjectJsonBuilder extends pandadoc.JsonBuilder {
     }
     // Here we forming Recipients
     global override pandadoc.Recipient[] getRecipients(sObject record) {
-        //sObjectName used in lowercase
-        String sObjectName = 'Contact'.toLowerCase();
+        sObject[] sObjects = record.getSObjects('Contacts__r');
 
-        //now we have mapping setting for Recipient
-        pandadoc.Recipient.RecipientSettings setting = pandadoc.Recipient.RECIPIENT_SETTINGS_MAP.get(sObjectName);
-        //here we forming list with SOQL fields.
-        String[] childFieldsList = new List<String>(setting.getSoqlFields());
-        String childFieldsStr = String.join(childFieldsList, ',');
-
-        String query = String.format(
-            'SELECT {0} FROM Contact WHERE Custom_Object__c = \'\'{1}\'\'',
-            new String[] {childFieldsStr, record.Id}
-        );
-
-        //forms Recipients
-        sObject[] sObjects = Database.query(query);
         pandadoc.Recipient[] result = new pandadoc.Recipient[]{};
         for (sObject rawObject: sObjects) {
             pandadoc.Recipient newRecipient = pandadoc.Recipient.sObjectToRecipient(rawObject);
